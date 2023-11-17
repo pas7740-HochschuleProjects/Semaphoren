@@ -4,19 +4,19 @@
 #include "stdlib.h"
 #include <stdio.h>
 
-int GenerateKey(char *p_keyPath){
+int GenerateKey(char *p_keyPath, char program){
     int key;
-    if((key = ftok(p_keyPath, '1')) < 0){
+    if((key = ftok(p_keyPath, program)) < 0){
         perror("Error in ftok");
         exit(ERROR);
     }
     return key;
 }
 
-SemSet* InitSemSet(int semCount){
+SemSet* InitSemSet(int semCount, char *p_keyPath, char program){
     SemSet *p_semSet = malloc(sizeof(SemSet));
     p_semSet->count = semCount;
-    int key = GenerateKey("/home/blazer");
+    int key = GenerateKey(p_keyPath, program);
     // Get Semaphoren
     if ((p_semSet->id = semget(key, semCount, IPC_CREAT|0666))<0){
         perror("Error in semget");
@@ -33,13 +33,13 @@ SemSet* InitSemSet(int semCount){
 }
 
 void P(SemSet *p_semSet, int indices[], int indiceCount){
-    struct sembuf semaphore;
-    semaphore.sem_flg=~(IPC_NOWAIT|SEM_UNDO);
-    semaphore.sem_op=-1;
+    struct sembuf semaphore[indiceCount];
 
     for(int i = 0; i < indiceCount; i++){
-        semaphore.sem_num=indices[i];
-        if(semop(p_semSet->id,&semaphore,1)){
+        semaphore[i].sem_flg=~(IPC_NOWAIT|SEM_UNDO);
+        semaphore[i].sem_op=-1;
+        semaphore[i].sem_num=indices[i];
+        if(semop(p_semSet->id,&semaphore,indiceCount)){
             perror("Error in semop P()");
             exit(ERROR);
         }
@@ -47,13 +47,13 @@ void P(SemSet *p_semSet, int indices[], int indiceCount){
 }
 
 void V(SemSet *p_semSet, int indices[], int indiceCount){
-    struct sembuf semaphore;
-    semaphore.sem_flg=~(IPC_NOWAIT|SEM_UNDO);
-    semaphore.sem_op=1;
+    struct sembuf semaphore[indiceCount];
 
     for(int i = 0; i < indiceCount; i++){
-        semaphore.sem_num=indices[i];
-        if(semop(p_semSet->id,&semaphore,1)){
+        semaphore[i].sem_flg=~(IPC_NOWAIT|SEM_UNDO);
+        semaphore[i].sem_op=1;
+        semaphore[i].sem_num=indices[i];
+        if(semop(p_semSet->id,&semaphore,indiceCount)){
             perror("Error in semop V()");
             exit(ERROR);
         }
